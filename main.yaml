@@ -1,0 +1,117 @@
+---
+- name: Making sure all custers have kubernetes dependencies installed
+  hosts: cluster
+  become: yes
+
+  tasks:
+    - name: Make sure the latest package versions are installed
+      apt:
+        update-cache: yes
+
+    - name: Install containerd on the machines
+      apt:
+        name: containerd
+        state: present
+
+    - name: Create the containerd folder on the machines
+      file:
+        path: /etc/containerd
+        state: directory
+        mode: 0755
+
+    - name: Install containerd default config
+      shell: containerd config default  /etc/containerd/config.toml
+
+    - name: Install KubeADM dependencies and key
+      apt_key:
+        url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+        state: present
+
+    - name: Add kuberenetes repository
+      apt_repository:
+        repo: "deb http://apt.kubernetes.io/ kubernetes-xenial main"
+        state: present
+
+    - name: Install kubernetes executables
+      apt:
+        pkg:
+          - kubeadm
+          - kubelet
+          - kubectl
+
+    - name: Configuring ip tables
+      lineinfile:
+        path: /etc/sysctl.conf
+        regexp: "^net.bridge.bridge-nf-call-iptables"
+        line: net.bridge.bridge-nf-call-iptables = 1
+
+    - name: Configuring ip fowarding
+      become: yes
+      shell: echo '1' > /proc/sys/net/ipv4/ip_forward
+
+    - name: Configure kernel
+      shell: sysctl --system
+
+    - name: Configure modprob
+      shell: |
+        modprobe overlay
+        modprobe br_netfilter
+        swapoff -a
+- name: Create the kubernetes master
+  hosts: master
+  become: yes
+
+  tasks:
+    - name: Download images for kubeadm
+      shell: kubeadm config images pull
+
+    - name: Check if cluster is already setup
+      command: kubeadm init phase preflight
+      ignore_errors: yes
+      register: preflight
+      changed_when: preflight.rc != 0
+
+    - name: Initialize kubeadm join token
+      shell: "kubeadm init --pod-network-cidr={{ansible_ssh_host}}/24 --apiserver-cert-extra-sans={{ansible_ssh_host}}"
+      register: join_command
+      when: preflight.rc == 0
+
+    - name: Setup kubeconfig
+      shell: "{{item}}"
+      with_items:
+        - mkdir -p $HOME/.kube
+        - /bin/cp /etc/kubernetes/admin.conf $HOME/.kube/config
+        - chown $(id -u):$(id -g) $HOME/.kube/config
+
+    - name: Install weaveworks to kubernetes
+      shell: kubectl apply -f "https://cloud.weave.works/k8s/net?k8s-version=$(kubectl version | base64 | tr -d '\n')"
+
+    - name: Generate join token
+      command: kubeadm token create --print-join-command
+      register: join_command
+
+    - name: Save join command
+      become: no
+      local_action: copy content="{{join_command.stdout_lines[0]}}" dest="./join-command"
+
+- name: Join slaves to master
+  hosts: slave
+  become: yes
+
+  tasks:
+    - name: Check if already in cluster
+      shell: kubeadm init phase preflight
+      ignore_errors: yes
+      register: preflight
+      changed_when: preflight.rc != 0
+
+    - name: Send the join command to the server
+      copy:
+        src: ./join-command
+        dest: /tmp/join-command.sh
+        mode: 0777
+      when: preflight.rc == 0
+
+    - name: Join the cluster
+      command: sh /tmp/join-command.sh
+      when: preflight.rc == 0
