@@ -1,0 +1,21 @@
+---
+- name: Install kubernetes dependencies
+  hosts: cluster
+  become: yes
+
+  roles:
+    - role: cluster-setup
+
+- name: Prepare kubernetes master
+  hosts: master
+  become: yes
+
+  roles:
+    - role: master-setup
+
+- name: Join nodes to kubernetes master
+  hosts: slave
+  become: yes
+
+  roles:
+    - role: slave-join

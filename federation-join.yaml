@@ -1,0 +1,21 @@
+---
+- name: Join instances to kubefedctl
+  hosts: master
+  become: yes
+
+  tasks:
+    - name: Join self
+      ignore_errors: yes
+      command: kubefedctl join master --v=2 --host-cluster-context master --kubefed-namespace=kube-federation-system
+
+    - name: Join slave
+      ignore_errors: yes
+      command: "kubefedctl join {{region|lower}} --v=2 --host-cluster-context master --kubefed-namespace=kube-federation-system "
+
+    - name: Display the clusters to verify
+      command: kubectl -n kube-federation-system get kubefedclusters
+      register: clusters
+
+    - name: Debug the clusters
+      debug:
+        msg: "{{clusters.stdout_lines}}"

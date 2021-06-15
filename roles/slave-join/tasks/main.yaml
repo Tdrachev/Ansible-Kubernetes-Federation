@@ -1,0 +1,17 @@
+---
+- name: Check if already in cluster
+  shell: kubeadm init phase preflight
+  ignore_errors: yes
+  register: preflight
+  changed_when: preflight.rc != 0
+
+- name: Send the join command to the server
+  copy:
+    src: ./join-command
+    dest: /tmp/join-command.sh
+    mode: 0777
+  when: preflight.rc == 0
+
+- name: Join the cluster
+  command: sh /tmp/join-command.sh
+  when: preflight.rc == 0

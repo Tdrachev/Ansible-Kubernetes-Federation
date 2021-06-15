@@ -1,0 +1,23 @@
+---
+- name: Load token as variable
+  become: no
+  local_action: command cat ./rbac-token
+  register: token
+
+- name: Add the credentials to the master
+  command: "kubectl config set-credentials {{region|lower}}-user --token={{token.stdout}}"
+
+- name: Add the Master remote ip
+  command: "kubectl config set-cluster {{region|lower}} --server=https://{{groups[region][0]}}:6443"
+
+- name: Set the context
+  command: "kubectl config set-context {{region|lower}} --cluster={{region|lower}} --user=kubefed-user --namespace='default' "
+
+- name: Copy the certificate to the master
+  copy:
+    src: ./rbac-certificate
+    dest: "/tmp/rbac-certificate-{{region|lower}}.crt"
+    mode: 0400
+
+- name: Notify to add certificate to config
+  shell: echo Add the certificate manually to the kube/config file

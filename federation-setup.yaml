@@ -1,0 +1,20 @@
+---
+- name: Initializing the RBAC roles on the correct region
+  hosts: "{{region}}"
+  become: yes
+
+  roles:
+    - role: federation-slave-setup
+
+- name: Setting up the federation master
+  hosts: master
+  become: yes
+
+  roles:
+    - role: federation-master-setup
+
+- name: Setting up the contexts for the federation master
+  hosts: master
+
+  roles:
+    - role: federation-master-add

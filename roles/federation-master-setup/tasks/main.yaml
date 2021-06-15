@@ -1,0 +1,32 @@
+---
+- name: Download helm to the federation controller
+  command: curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3
+
+- name: Set perms to get_helm.sh
+  command: chmod 700 get_helm.sh
+
+- name: Install helm to the kubefed controller
+  command: ./get_helm.sh
+
+- name: Setting up helm for the federation controller
+  community.kubernetes.helm_repository:
+    name: kubefed_charts
+    repo_url: https://raw.githubusercontent.com/kubernetes-sigs/kubefed/master/charts
+    register: result
+    changed_when: result.rc == 0
+
+- name: Installing the kubefed charts
+  community.kubernetes.helm:
+    name: kubefed
+    chart_ref: kubefed_charts/kubefed
+    release_namespace: kube-federation-system
+    create_namespace: yes
+
+- name: Downloading kubefedctl
+  command: curl -LO https://github.com/kubernetes-sigs/kubefed/releases/download/v0.7.0/kubefedctl-0.7.0-linux-amd64.tgz
+
+- name: Extracting kubefedctl zip and installing it
+  shell: |
+    tar -zxvf kubefedctl-*.tgz
+    chmod u+x kubefedctl
+    sudo mv kubefedctl /usr/local/bin/

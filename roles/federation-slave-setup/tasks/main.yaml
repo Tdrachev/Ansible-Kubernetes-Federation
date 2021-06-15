@@ -1,0 +1,29 @@
+---
+- name: Get the correct RBAC role to the cluster
+  copy:
+    src: "./dependencies/kubernetes-{{region}}-Role.yaml"
+    dest: /tmp/rbac.yaml
+    mode: 0777
+
+- name: Installing the role on the cluster
+  command: kubectl apply -f /tmp/rbac.yaml
+
+- name: Get the secrets
+  command: kubectl get secrets
+  register: secrets
+
+- name: Describe the token
+  command: "kubectl describe secret {{secrets.stdout_lines[2].split(' ')[0]}}"
+  register: secret
+
+- name: Save the token to the local machine
+  become: no
+  local_action: copy content="{{secret.stdout_lines[12].split(' ')[6]}}" dest="./rbac-token"
+
+- name: Get the certificate
+  command: cat /etc/kubernetes/pki/ca.crt
+  register: certificate
+
+- name: Save the certificate to the local machine
+  become: no
+  local_action: copy content="{{certificate.stdout}}" dest="./rbac-certificate"

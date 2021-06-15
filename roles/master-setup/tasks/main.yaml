@@ -1,0 +1,32 @@
+---
+- name: Download images for kubeadm
+  shell: kubeadm config images pull
+
+- name: Check if cluster is already setup
+  command: kubeadm init phase preflight
+  ignore_errors: yes
+  register: preflight
+  changed_when: preflight.rc != 0
+
+- name: Initialize kubeadm join token
+  shell: "kubeadm init --pod-network-cidr={{ansible_ssh_host}}/24 --apiserver-cert-extra-sans={{ansible_ssh_host}}"
+  register: join_command
+  when: preflight.rc == 0
+
+- name: Setup kubeconfig
+  shell: "{{item}}"
+  with_items:
+    - mkdir -p $HOME/.kube
+    - /bin/cp /etc/kubernetes/admin.conf $HOME/.kube/config
+    - chown $(id -u):$(id -g) $HOME/.kube/config
+
+- name: Install weaveworks to kubernetes
+  shell: kubectl apply -f "https://cloud.weave.works/k8s/net?k8s-version=$(kubectl version | base64 | tr -d '\n')"
+
+- name: Generate join token
+  command: kubeadm token create --print-join-command
+  register: join_command
+
+- name: Save join command
+  become: no
+  local_action: copy content="{{join_command.stdout_lines[0]}}" dest="./join-command"
