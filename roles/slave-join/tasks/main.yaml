@@ -7,7 +7,7 @@
 
 - name: Send the join command to the server
   copy:
-    src: ./join-command
+    src: "./join-command"
     dest: /tmp/join-command.sh
     mode: 0777
   when: preflight.rc == 0

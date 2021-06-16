@@ -15,6 +15,7 @@
 
 - name: Setting up the contexts for the federation master
   hosts: master
+  become: yes
 
   roles:
     - role: federation-master-add

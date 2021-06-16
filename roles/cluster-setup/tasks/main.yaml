@@ -7,15 +7,18 @@
   apt:
     name: containerd
     state: present
+  register: containerd
 
 - name: Create the containerd folder on the machines
   file:
     path: /etc/containerd
     state: directory
     mode: 0755
+  when: containerd.changed != false
 
 - name: Install containerd default config
   shell: containerd config default  /etc/containerd/config.toml
+  when: containerd.changed != false
 
 - name: Install KubeADM dependencies and key
   apt_key:
@@ -33,22 +36,27 @@
       - kubeadm
       - kubelet
       - kubectl
+  register: kubernetes_executables
 
 - name: Configuring ip tables
   lineinfile:
     path: /etc/sysctl.conf
     regexp: "^net.bridge.bridge-nf-call-iptables"
     line: net.bridge.bridge-nf-call-iptables = 1
+  when: kubernetes_executables.changed != false
 
 - name: Configuring ip fowarding
   become: yes
   shell: echo '1' > /proc/sys/net/ipv4/ip_forward
+  when: kubernetes_executables.changed != false
 
 - name: Configure kernel
   shell: sysctl --system
+  when: kubernetes_executables.changed != false
 
 - name: Configure modprob
   shell: |
     modprobe overlay
     modprobe br_netfilter
     swapoff -a
+  when: kubernetes_executables.changed != false
