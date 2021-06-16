@@ -1,0 +1,27 @@
+---
+- name: Try to edit an yml file
+  hosts: master
+  become: yes
+
+  tasks:
+    - name: Debug
+      debug:
+        msg: "{{groups[region][0]}}"
+
+    - name: Edit
+      lineinfile:
+        path: $HOME/.kube/config
+        line: "    certificate-authority: /tmp/rbac-certificate-{{region|lower}}.crt"
+        insertbefore: "    server: https://{{groups[region][0]}}\n"
+
+    - name: rename kubernetes-admin to master
+      lineinfile:
+        path: $HOME/.kube/config
+        regexp: "^  name: kubernetes-admin@kubernetes$"
+        line: "  name: master"
+
+    - name: rename current context to master
+      lineinfile:
+        path: $HOME/.kube/config
+        regexp: "^current-context: kubernetes-admin@kubernetes$"
+        line: "current-context: master"

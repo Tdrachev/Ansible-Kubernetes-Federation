@@ -18,6 +18,25 @@
     src: ./rbac-certificate
     dest: "/tmp/rbac-certificate-{{region|lower}}.crt"
     mode: 0400
+  register: certificate
 
-- name: Notify to add certificate to config
-  shell: echo Add the certificate manually to the kube/config file
+- name: Insert certificate into file
+  lineinfile:
+    path: $HOME/.kube/config
+    line: "    certificate-authority: /tmp/rbac-certificate-{{region|lower}}.crt"
+    insertbefore: "    server: https://{{groups[region][0]}}:6443\n"
+  when: certificate.changed != false
+
+- name: Rename kubernetes-admin to master
+  lineinfile:
+    path: $HOME/.kube/config
+    regexp: "^  name: kubernetes-admin@kubernetes$"
+    line: "  name: master"
+  when: certificate.changed != false
+
+- name: Rename current context to master
+  lineinfile:
+    path: $HOME/.kube/config
+    regexp: "^current-context: kubernetes-admin@kubernetes$"
+    line: "current-context: master"
+  when: certificate.changed != false
