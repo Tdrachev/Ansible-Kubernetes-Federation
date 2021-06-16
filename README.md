@@ -1,6 +1,6 @@
 # Ansible-Kubernetes
 
-A repo containing ansible playbooks for deploying and destroying a federation kubernetes cluster
+A repo containing ansible playbooks for deploying and in the future destroying a federation kubernetes cluster
 
 # How to:
 
