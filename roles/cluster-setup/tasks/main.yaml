@@ -3,6 +3,11 @@
   apt:
     update-cache: yes
 
+- name: Install fail2ban
+  apt:
+    name: fail2ban
+    state: present
+
 - name: Install containerd on the machines
   apt:
     name: containerd
