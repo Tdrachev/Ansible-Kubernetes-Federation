@@ -19,3 +19,14 @@
     - name: Debug the clusters
       debug:
         msg: "{{clusters.stdout_lines}}"
+
+- name: Enable federation services
+  hosts: master
+  become: yes
+
+  tasks:
+    - name: Enable deployments for kubefed
+      command: kubefedctl enable deployments.apps --kubefed-namespace kube-federation-system
+
+    - name: Enable services for kubefed
+      command: kubefedctl enable services --kubefed-namespace kube-federation-system
